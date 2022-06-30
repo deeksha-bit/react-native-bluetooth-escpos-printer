@@ -197,6 +197,7 @@ public class BluetoothService {
         private InputStream mmInStream;
         private OutputStream mmOutStream;
 
+
         public ConnectedThread(BluetoothDevice device) {
             mmDevice = device;
             device.getAddress();
@@ -251,7 +252,8 @@ public class BluetoothService {
                 connectionFailed();
                 // Close the socket
                 try {
-                    mmSocket.close();
+                  mmSocket.close();
+                  connectionLost();
                 } catch (Exception e2) {
                     Log.e(TAG, "unable to close() socket during connection failure", e2);
                 }

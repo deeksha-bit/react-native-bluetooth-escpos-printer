@@ -136,9 +136,12 @@ public class RNBluetoothManagerModule extends ReactContextBaseJavaModule
             Set<BluetoothDevice> boundDevices = adapter.getBondedDevices();
             for (BluetoothDevice d : boundDevices) {
                 try {
-                    JSONObject obj = new JSONObject();
+                    BluetoothClass bluetoothClass = d.getBluetoothClass();
+                    JSONObject obj = new JSONObject(); 
                     obj.put("name", d.getName());
-                    obj.put("address", d.getAddress());
+                    obj.put("address", d.getAddress());        
+                    obj.put("class:", bluetoothClass.getDeviceClass());
+                    obj.put("type", "paired");
                     pairedDeivce.pushString(obj.toString());
                 } catch (Exception e) {
                     //ignore.
@@ -189,9 +192,12 @@ public class RNBluetoothManagerModule extends ReactContextBaseJavaModule
             Set<BluetoothDevice> boundDevices = adapter.getBondedDevices();
             for (BluetoothDevice d : boundDevices) {
                 try {
+                    BluetoothClass bluetoothClass = d.getBluetoothClass();
                     JSONObject obj = new JSONObject();
                     obj.put("name", d.getName());
                     obj.put("address", d.getAddress());
+                    obj.put("class:", bluetoothClass.getDeviceClass()); //1664
+                    obj.put("type", "paired");
                     pairedDeivce.put(obj);
                 } catch (Exception e) {
                     //ignore.
@@ -201,12 +207,34 @@ public class RNBluetoothManagerModule extends ReactContextBaseJavaModule
             WritableMap params = Arguments.createMap();
             params.putString("devices", pairedDeivce.toString());
             emitRNEvent(EVENT_DEVICE_ALREADY_PAIRED, params);
-            if (!adapter.startDiscovery()) {
-                promise.reject("DISCOVER", "NOT_STARTED");
+            if (adapter.isDiscovering()) {
+                // Log.i("ds", "Printer connection error");
                 cancelDisCovery();
-            } else {
+                adapter.startDiscovery();
                 promiseMap.put(PROMISE_SCAN, promise);
+                IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
+                this.reactContext.registerReceiver(discoverReceiver, filter);
+
+                // IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
+                // reactContext.registerReceiver(bReceiver, filter);
             }
+            if (!adapter.isDiscovering()) {
+                adapter.startDiscovery();
+                promiseMap.put(PROMISE_SCAN, promise);
+                IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
+                this.reactContext.registerReceiver(discoverReceiver, filter);
+
+                // IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
+                // mContext.registerReceiver(bReceiver, filter);
+                // Log.i("ds", "Printer connection");
+
+            }
+            // if (!adapter.startDiscovery()) {
+            //     promise.reject("DISCOVER", "NOT_STARTED");
+            //     cancelDisCovery();
+            // } else {
+            //     promiseMap.put(PROMISE_SCAN, promise);
+            // }
         }
     }
 
@@ -356,8 +384,11 @@ public class RNBluetoothManagerModule extends ReactContextBaseJavaModule
                         for (BluetoothDevice d : boundDevices) {
                             try {
                                 JSONObject obj = new JSONObject();
+                                BluetoothClass bluetoothClass = d.getBluetoothClass();
                                 obj.put("name", d.getName());
                                 obj.put("address", d.getAddress());
+                                obj.put("class:", bluetoothClass.getDeviceClass()); //1664
+                                obj.put("type", "paired");
                                 pairedDeivce.pushString(obj.toString());
                             } catch (Exception e) {
                                 //ignore.
@@ -422,9 +453,13 @@ public class RNBluetoothManagerModule extends ReactContextBaseJavaModule
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                 if (device.getBondState() != BluetoothDevice.BOND_BONDED) {
                     JSONObject deviceFound = new JSONObject();
+                    BluetoothClass bluetoothClass = device.getBluetoothClass();
                     try {
                         deviceFound.put("name", device.getName());
                         deviceFound.put("address", device.getAddress());
+                        deviceFound.put("class", bluetoothClass.getDeviceClass());
+                        deviceFound.put("type", "unpaired");
+
                     } catch (Exception e) {
                         //ignore
                     }
