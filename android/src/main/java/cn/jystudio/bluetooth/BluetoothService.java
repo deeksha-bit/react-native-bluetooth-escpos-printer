@@ -1,12 +1,15 @@
-
 package cn.jystudio.bluetooth;
 
+import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.util.Log;
+
+import androidx.core.app.ActivityCompat;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -54,7 +57,7 @@ public class BluetoothService {
     public static final String DEVICE_NAME = "device_name";
     public static final String DEVICE_ADDRESS = "device_address";
     public static final String TOAST = "toast";
-
+    public  Context mContext;
     public static String ErrorMessage = "No_Error_Message";
 
     private static List<BluetoothServiceStateObserver> observers = new ArrayList<BluetoothServiceStateObserver>();
@@ -68,6 +71,7 @@ public class BluetoothService {
     public BluetoothService(Context context) {
         mAdapter = BluetoothAdapter.getDefaultAdapter();
         mState = STATE_NONE;
+        mContext =context;
 
     }
 
@@ -131,6 +135,16 @@ public class BluetoothService {
         if (mState == STATE_CONNECTED && connectedDevice != null && connectedDevice.getAddress().equals(device.getAddress())) {
             // connected already
             Map<String, Object> bundle = new HashMap<String, Object>();
+            if (ActivityCompat.checkSelfPermission(mContext, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                // TODO: Consider calling
+                //    ActivityCompat#requestPermissions
+                // here to request the missing permissions, and then overriding
+                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                //                                          int[] grantResults)
+                // to handle the case where the user grants the permission. See the documentation
+                // for ActivityCompat#requestPermissions for more details.
+                return;
+            }
             bundle.put(DEVICE_NAME, device.getName());
             bundle.put(DEVICE_ADDRESS, device.getAddress());
             setState(STATE_CONNECTED, bundle);
@@ -210,6 +224,16 @@ public class BluetoothService {
             Map<String, Object> bundle = new HashMap<String, Object>();
 
             // Always cancel discovery because it will slow down a connection
+            if (ActivityCompat.checkSelfPermission(mContext, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+                // TODO: Consider calling
+                //    ActivityCompat#requestPermissions
+                // here to request the missing permissions, and then overriding
+                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                //                                          int[] grantResults)
+                // to handle the case where the user grants the permission. See the documentation
+                // for ActivityCompat#requestPermissions for more details.
+//                return;
+            }
             mAdapter.cancelDiscovery();
 
             BluetoothSocket tmp = null;

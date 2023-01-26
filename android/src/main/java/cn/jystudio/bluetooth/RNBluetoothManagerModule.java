@@ -1,6 +1,7 @@
 package cn.jystudio.bluetooth;
 
 
+import android.Manifest;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothClass;
@@ -11,8 +12,10 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
+
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
 import android.util.Log;
 import android.widget.Toast;
 
@@ -29,6 +32,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+
 /**
  * Created by januslo on 2018/9/22.
  */
@@ -106,14 +110,14 @@ public class RNBluetoothManagerModule extends ReactContextBaseJavaModule
         return constants;
     }
 
-    private BluetoothAdapter getBluetoothAdapter(){
-        if(mBluetoothAdapter == null){
+    private BluetoothAdapter getBluetoothAdapter() {
+        if (mBluetoothAdapter == null) {
             // Get local Bluetooth adapter
             mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         }
         // If the adapter is null, then Bluetooth is not supported
         if (mBluetoothAdapter == null) {
-            emitRNEvent(EVENT_BLUETOOTH_NOT_SUPPORT,  Arguments.createMap());
+            emitRNEvent(EVENT_BLUETOOTH_NOT_SUPPORT, Arguments.createMap());
         }
 
         return mBluetoothAdapter;
@@ -123,24 +127,44 @@ public class RNBluetoothManagerModule extends ReactContextBaseJavaModule
     @ReactMethod
     public void enableBluetooth(final Promise promise) {
         BluetoothAdapter adapter = this.getBluetoothAdapter();
-        if(adapter == null){
+        if (adapter == null) {
             promise.reject(EVENT_BLUETOOTH_NOT_SUPPORT);
-        }else if (!adapter.isEnabled()) {
+        } else if (!adapter.isEnabled()) {
             // If Bluetooth is not on, request that it be enabled.
             // setupChat() will then be called during onActivityResult
+            if (ActivityCompat.checkSelfPermission(reactContext, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                // TODO: Consider calling
+                //    ActivityCompat#requestPermissions
+                // here to request the missing permissions, and then overriding
+                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                //                                          int[] grantResults)
+                // to handle the case where the user grants the permission. See the documentation
+                // for ActivityCompat#requestPermissions for more details.
+                return;
+            }
             Intent enableIntent = new Intent(
                     BluetoothAdapter.ACTION_REQUEST_ENABLE);
             promiseMap.put(PROMISE_ENABLE_BT, promise);
             this.reactContext.startActivityForResult(enableIntent, REQUEST_ENABLE_BT, Bundle.EMPTY);
         } else {
-            WritableArray pairedDeivce =Arguments.createArray();
+            WritableArray pairedDeivce = Arguments.createArray();
+            if (ActivityCompat.checkSelfPermission(reactContext, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                // TODO: Consider calling
+                //    ActivityCompat#requestPermissions
+                // here to request the missing permissions, and then overriding
+                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                //                                          int[] grantResults)
+                // to handle the case where the user grants the permission. See the documentation
+                // for ActivityCompat#requestPermissions for more details.
+                return;
+            }
             Set<BluetoothDevice> boundDevices = adapter.getBondedDevices();
             for (BluetoothDevice d : boundDevices) {
                 try {
                     BluetoothClass bluetoothClass = d.getBluetoothClass();
-                    JSONObject obj = new JSONObject(); 
+                    JSONObject obj = new JSONObject();
                     obj.put("name", d.getName());
-                    obj.put("address", d.getAddress());        
+                    obj.put("address", d.getAddress());
                     obj.put("class:", bluetoothClass.getDeviceClass());
                     obj.put("type", "paired");
                     pairedDeivce.pushString(obj.toString());
@@ -156,11 +180,21 @@ public class RNBluetoothManagerModule extends ReactContextBaseJavaModule
     @ReactMethod
     public void disableBluetooth(final Promise promise) {
         BluetoothAdapter adapter = this.getBluetoothAdapter();
-        if(adapter == null){
+        if (adapter == null) {
             promise.resolve(true);
-        }else {
+        } else {
             if (mService != null && mService.getState() != BluetoothService.STATE_NONE) {
                 mService.stop();
+            }
+            if (ActivityCompat.checkSelfPermission(reactContext, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                // TODO: Consider calling
+                //    ActivityCompat#requestPermissions
+                // here to request the missing permissions, and then overriding
+                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                //                                          int[] grantResults)
+                // to handle the case where the user grants the permission. See the documentation
+                // for ActivityCompat#requestPermissions for more details.
+                return;
             }
             promise.resolve(!adapter.isEnabled() || adapter.disable());
         }
@@ -169,22 +203,28 @@ public class RNBluetoothManagerModule extends ReactContextBaseJavaModule
     @ReactMethod
     public void isBluetoothEnabled(final Promise promise) {
         BluetoothAdapter adapter = this.getBluetoothAdapter();
-        promise.resolve(adapter!=null && adapter.isEnabled());
+        promise.resolve(adapter != null && adapter.isEnabled());
     }
+
+
 
     @ReactMethod
     public void scanDevices(final Promise promise) {
         BluetoothAdapter adapter = this.getBluetoothAdapter();
-        if(adapter == null){
+        if (adapter == null) {
             promise.reject(EVENT_BLUETOOTH_NOT_SUPPORT);
-        }else {
+        } else {
             cancelDisCovery();
-            int permissionChecked = ContextCompat.checkSelfPermission(reactContext, android.Manifest.permission.ACCESS_COARSE_LOCATION);
-            if (permissionChecked == PackageManager.PERMISSION_DENIED) {
-                // // TODO: 2018/9/21
-                ActivityCompat.requestPermissions(reactContext.getCurrentActivity(),
-                        new String[]{android.Manifest.permission.ACCESS_COARSE_LOCATION},
-                        1);
+            if ((ActivityCompat.checkSelfPermission(reactContext, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED)||(ActivityCompat.checkSelfPermission(reactContext, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED)) {
+
+                // TODO: Consider calling
+                //    ActivityCompat#requestPermissions
+                // here to request the missing permissions, and then overriding
+                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                //                                          int[] grantResults)
+                // to handle the case where the user grants the permission. See the documentation
+                // for ActivityCompat#requestPermissions for more details.
+                return;
             }
 
 
@@ -242,7 +282,7 @@ public class RNBluetoothManagerModule extends ReactContextBaseJavaModule
     @ReactMethod
     public void connect(String address, final Promise promise) {
         BluetoothAdapter adapter = this.getBluetoothAdapter();
-        if (adapter!=null && adapter.isEnabled()) {
+        if (adapter != null && adapter.isEnabled()) {
             BluetoothDevice device = adapter.getRemoteDevice(address);
             promiseMap.put(PROMISE_CONNECT, promise);
             mService.connect(device);
@@ -253,9 +293,9 @@ public class RNBluetoothManagerModule extends ReactContextBaseJavaModule
     }
 
     @ReactMethod
-    public void disconnect(String address, final Promise promise){
+    public void disconnect(String address, final Promise promise) {
         BluetoothAdapter adapter = this.getBluetoothAdapter();
-        if (adapter!=null && adapter.isEnabled()) {
+        if (adapter != null && adapter.isEnabled()) {
             BluetoothDevice device = adapter.getRemoteDevice(address);
             try {
                 mService.stop();
@@ -267,12 +307,12 @@ public class RNBluetoothManagerModule extends ReactContextBaseJavaModule
             promise.reject("BT NOT ENABLED");
         }
 
-	}
+    }
 
     @ReactMethod
-    public void unpaire(String address,final Promise promise){
+    public void unpaire(String address, final Promise promise) {
         BluetoothAdapter adapter = this.getBluetoothAdapter();
-        if (adapter!=null && adapter.isEnabled()) {
+        if (adapter != null && adapter.isEnabled()) {
             BluetoothDevice device = adapter.getRemoteDevice(address);
             this.unpairDevice(device);
             promise.resolve(address);
@@ -318,19 +358,17 @@ public class RNBluetoothManagerModule extends ReactContextBaseJavaModule
     }
 
 
-
     /* Return the address of the currently connected device */
     @ReactMethod
     public void getConnectedDeviceAddress(final Promise promise) {
-        if (mService!=null){
+        if (mService != null) {
             promise.resolve(mService.getLastConnectedDeviceAddress());
         }
 
     }
 
 
-
-        private void unpairDevice(BluetoothDevice device) {
+    private void unpairDevice(BluetoothDevice device) {
         try {
             Method m = device.getClass()
                     .getMethod("removeBond", (Class[]) null);
@@ -343,7 +381,17 @@ public class RNBluetoothManagerModule extends ReactContextBaseJavaModule
     private void cancelDisCovery() {
         try {
             BluetoothAdapter adapter = this.getBluetoothAdapter();
-            if (adapter!=null && adapter.isDiscovering()) {
+            if (ActivityCompat.checkSelfPermission(reactContext, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+                // TODO: Consider calling
+                //    ActivityCompat#requestPermissions
+                // here to request the missing permissions, and then overriding
+                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                //                                          int[] grantResults)
+                // to handle the case where the user grants the permission. See the documentation
+                // for ActivityCompat#requestPermissions for more details.
+                return;
+            }
+            if (adapter != null && adapter.isDiscovering()) {
                 adapter.cancelDiscovery();
             }
             Log.d(TAG, "Discover canceled");
@@ -365,7 +413,7 @@ public class RNBluetoothManagerModule extends ReactContextBaseJavaModule
                     String address = data.getExtras().getString(
                             EXTRA_DEVICE_ADDRESS);
                     // Get the BLuetoothDevice object
-                    if (adapter!=null && BluetoothAdapter.checkBluetoothAddress(address)) {
+                    if (adapter != null && BluetoothAdapter.checkBluetoothAddress(address)) {
                         BluetoothDevice device = adapter
                                 .getRemoteDevice(address);
                         // Attempt to connect to the device
@@ -379,8 +427,18 @@ public class RNBluetoothManagerModule extends ReactContextBaseJavaModule
                 // When the request to enable Bluetooth returns
                 if (resultCode == Activity.RESULT_OK && promise != null) {
                     // Bluetooth is now enabled, so set up a session
-                    if(adapter!=null){
-                        WritableArray pairedDeivce =Arguments.createArray();
+                    if (adapter != null) {
+                        WritableArray pairedDeivce = Arguments.createArray();
+                        if (ActivityCompat.checkSelfPermission(reactContext, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                            // TODO: Consider calling
+                            //    ActivityCompat#requestPermissions
+                            // here to request the missing permissions, and then overriding
+                            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                            //                                          int[] grantResults)
+                            // to handle the case where the user grants the permission. See the documentation
+                            // for ActivityCompat#requestPermissions for more details.
+                            return;
+                        }
                         Set<BluetoothDevice> boundDevices = adapter.getBondedDevices();
                         for (BluetoothDevice d : boundDevices) {
                             try {
@@ -452,6 +510,16 @@ public class RNBluetoothManagerModule extends ReactContextBaseJavaModule
             if (BluetoothDevice.ACTION_FOUND.equals(action)) {
                 // Get the BluetoothDevice object from the Intent
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                if (ActivityCompat.checkSelfPermission(reactContext, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                    // TODO: Consider calling
+                    //    ActivityCompat#requestPermissions
+                    // here to request the missing permissions, and then overriding
+                    //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                    //                                          int[] grantResults)
+                    // to handle the case where the user grants the permission. See the documentation
+                    // for ActivityCompat#requestPermissions for more details.
+                    return;
+                }
                 if (device.getBondState() != BluetoothDevice.BOND_BONDED) {
                     JSONObject deviceFound = new JSONObject();
                     BluetoothClass bluetoothClass = device.getBluetoothClass();
